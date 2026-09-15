@@ -1,9 +1,11 @@
 import asyncio
-from typing import Final, Protocol
+from pathlib import Path
+from typing import Callable, Final, Protocol
 
 import numpy as np
 import sounddevice as sd
 
+import history as chat_history
 from config import EngineConfig
 from engines.llm import LLM_BACKENDS
 from logger import log
@@ -108,6 +110,77 @@ class Assistant:
         # Выставляется UI при отправке текста из поля ввода.
         self.text_input: str | None = None
 
+        # --- текущий чат ---
+        # None = ещё не сохранённый новый чат; файл появится после первого хода.
+        self.chat_path: Path | None = None
+        self.chat_title: str = chat_history.DEFAULT_TITLE
+        # UI подписывается сюда, чтобы обновить список чатов после автосохранения.
+        self.on_chat_saved: Callable[[str, Path], None] | None = None
+
+    # --- управление чатами --------------------------------------------------
+
+    def _system_message(self) -> dict | None:
+        char = self.engines.cfg.char
+        text = char.char_prompt.replace("{name}", char.char_name).strip()
+        return {"role": "system", "content": text} if text else None
+
+    def new_chat(self) -> None:
+        """Начинает пустой чат (кнопка "Новый чат" в UI). Не мешает середине хода диалога."""
+        if self.ctx.state is not State.IDLE:
+            return
+        c = self.ctx
+        self.chat_path = None
+        self.chat_title = chat_history.DEFAULT_TITLE
+        c.history = []
+        sys_msg = self._system_message()
+        if sys_msg:
+            c.history.append(sys_msg)
+        c.transcript = ""
+        c.reply = ""
+        c.emit_history_replaced()
+
+    def load_chat(self, path: Path) -> None:
+        """Загружает сохранённый чат с диска и подставляет в контекст для LLM."""
+        if self.ctx.state is not State.IDLE:
+            return
+        try:
+            title, messages = chat_history.load_chat(path)
+        except (OSError, ValueError):
+            log.exception("не удалось загрузить чат %s", path)
+            return
+        c = self.ctx
+        self.chat_path = Path(path)
+        self.chat_title = title
+        c.history = []
+        sys_msg = self._system_message()
+        if sys_msg:
+            c.history.append(sys_msg)
+        c.history.extend(messages)
+        c.transcript = ""
+        c.reply = ""
+        c.emit_history_replaced()
+
+    def _save_chat(self) -> None:
+        # Системный промпт не сохраняем — он пересобирается заново из char-конфига
+        # при загрузке, чтобы старые чаты подхватывали актуальный характер/имя.
+        messages = [m for m in self.ctx.history if m.get("role") != "system"]
+        if not messages:
+            return
+        if self.chat_path is None:
+            first_user = next((m.get("content", "") for m in messages if m.get("role") == "user"), "")
+            self.chat_title = chat_history.derive_title(first_user)
+            self.chat_path = chat_history.unique_path(self.chat_title)
+        try:
+            chat_history.save_chat(self.chat_path, self.chat_title, messages)
+        except OSError:
+            log.exception("не удалось сохранить чат %s", self.chat_path)
+            return
+        if self.on_chat_saved:
+            try:
+                self.on_chat_saved(self.chat_title, self.chat_path)
+            except Exception:
+                log.exception("колбэк сохранения чата упал")
+
     # --- один ход диалога -------------------------------------------------
 
     async def turn(self) -> None:
@@ -150,6 +223,7 @@ class Assistant:
 
         c.history.append({"role": "assistant", "content": c.reply})
         c.emit_message("assistant", c.reply)
+        self._save_chat()
         c.set_state(State.SPEAKING)
         # interrupt мог остаться взведённым с момента отпускания клавиши записи —
         # очищаем перед озвучкой, чтобы TTS получила чистый сигнал прерывания.
@@ -182,9 +256,10 @@ class Assistant:
 
             # Системный промпт подсаживаем в историю один раз при старте —
             # дальше он просто едет первым сообщением во всех вызовах LLM.
-            system_prompt = self.engines.cfg.char.char_prompt.replace("${name}", self.engines.cfg.char.char_name).strip()
-            if system_prompt and not c.history:
-                c.history.append({"role": "system", "content": system_prompt})
+            if not c.history:
+                sys_msg = self._system_message()
+                if sys_msg:
+                    c.history.append(sys_msg)
 
             c.set_state(State.IDLE)
         except Exception:

@@ -43,6 +43,8 @@ class Context:
     listeners: list[Callable[[State, State], None]] = field(default_factory=list)
     # подписчики на новые реплики (роль "user"/"assistant" + текст) — для UI-лога
     message_listeners: list[Callable[[str, str], None]] = field(default_factory=list)
+    # подписчики на полную замену истории (новый/загруженный чат) — UI перерисовывает лог
+    history_listeners: list[Callable[[list[dict]], None]] = field(default_factory=list)
 
     def set_state(self, new: State) -> None:
         if new not in TRANSITIONS[self.state]:
@@ -61,6 +63,15 @@ class Context:
                 fn(role, text)
             except Exception as e:
                 log.warning("слушатель сообщений упал: %s", e)
+
+    def emit_history_replaced(self) -> None:
+        # Системное сообщение UI не касается — отдаём только видимую часть диалога.
+        visible = [m for m in self.history if m.get("role") != "system"]
+        for fn in self.history_listeners:
+            try:
+                fn(visible)
+            except Exception as e:
+                log.warning("слушатель истории упал: %s", e)
 
 
 def on_state_change(old: State, new: State) -> None:

@@ -25,6 +25,8 @@ async def main() -> None:
     ui = AssistantUI(app)
     ctx.listeners.append(ui.on_state_change)
     ctx.message_listeners.append(ui.on_message)
+    ctx.history_listeners.append(ui.on_history_replaced)
+    app.on_chat_saved = ui.on_chat_saved
 
     loop = asyncio.get_running_loop()
     # Ctrl+C (если запущено из терминала) всё ещё гасит корректно:
