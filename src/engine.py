@@ -138,6 +138,9 @@ class Assistant:
 
         c.history.append({"role": "assistant", "content": c.reply})
         c.set_state(State.SPEAKING)
+        # interrupt мог остаться взведённым с момента отпускания клавиши записи —
+        # очищаем перед озвучкой, чтобы TTS получила чистый сигнал прерывания.
+        self.interrupt.clear()
         await self.engines.speak(c.reply, self.interrupt)
         c.set_state(State.IDLE)
 
@@ -200,11 +203,9 @@ class Assistant:
         await self.shutdown()
 
     @staticmethod
-    async def wait_any(*events: asyncio.Event) -> None:
-        tasks = [asyncio.create_task(e.wait()) for e in events]
-        _, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
-        for t in pending:
-            t.cancel()
+    async def wait_any(*events: asyncio.Event, poll: float = 0.2) -> None:
+        while not any(e.is_set() for e in events):
+            await asyncio.sleep(poll)
 
     async def shutdown(self) -> None:
         c = self.ctx

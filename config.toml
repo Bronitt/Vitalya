@@ -4,6 +4,7 @@ asr_model = "small"
 asr_device = "cuda"
 asr_compute = "float16"
 asr_language = "ru"
+push_to_talk_button_name = "space"
 
 [llm]
 llm_engine = "ollama"

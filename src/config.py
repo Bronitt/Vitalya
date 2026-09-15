@@ -19,6 +19,7 @@ class ASRConfig:
     asr_device: str = "cuda"  # cpu/cuda
     asr_compute: str = "float16"  # int8 (cpu) / float16 (cuda)
     asr_language: str = "ru"
+    push_to_talk_button_name: str = "space"
 
 
 class LLMEngine(Enum):
