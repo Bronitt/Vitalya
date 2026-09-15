@@ -1,0 +1,15 @@
+[asr]
+asr_engine = "faster_whisper"
+asr_model = "small"
+asr_device = "cuda"
+asr_compute = "float16"
+asr_language = "ru"
+
+[llm]
+llm_engine = "ollama"
+llm_model = "qwen3:14b"
+llm_host = "http://localhost:11434"
+
+[tts]
+tts_engine = "edge_tts"
+tts_voice = "ru-RU-DmitryNeural"
