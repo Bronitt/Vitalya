@@ -57,7 +57,8 @@ class LLMConfig:
     llm_model: str = "qwen3:14b"
     llm_host: str = "http://localhost:11434"
     temperature: float = 0.7  # 0 — детерминированно и сухо, 1+ — разнообразнее и рискованнее
-    num_predict: int = 512  # верхний лимит токенов на один ответ
+    num_predict: int = 512  # -1 = не ограничивать (параметр не передаётся в Ollama вовсе)
+    llm_think: bool = True  # включить reasoning-трейс модели (qwen3, deepseek-r1 и т.п.)
 
 
 class TTSEngine(Enum):

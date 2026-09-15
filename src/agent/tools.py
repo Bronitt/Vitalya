@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Callable
 
 from agent.apps import load_whitelist
+from agent.winctl import type_into_app
 from state import Context
 
 
@@ -65,9 +66,35 @@ def create_note(ctx: Context, filename: str, text: str) -> str:
     {"type": "object", "properties": {"app": {"type": "string"}}, "required": ["app"]},
 )
 def open_app(ctx: Context, app: str) -> str:
+    key = app.lower().strip()
     allowed = load_whitelist()
-    exe = allowed.get(app.lower().strip())
+    exe = allowed.get(key)
     if not exe:
         return f"Приложение {app} не в списке разрешённых"
-    subprocess.Popen([exe], shell=False)
+    proc = subprocess.Popen([exe], shell=False)
+    ctx.running_apps[key] = proc  # запоминаем, чтобы потом можно было туда печатать
     return f"Открываю {app}"
+
+
+@tool(
+    "type_text",
+    "Напечатать текст в уже открытом приложении (сначала вызови open_app)",
+    {
+        "type": "object",
+        "properties": {"app": {"type": "string"}, "text": {"type": "string"}},
+        "required": ["app", "text"],
+    },
+)
+def type_text(ctx: Context, app: str, text: str) -> str:
+    key = app.lower().strip()
+    proc = ctx.running_apps.get(key)
+    if proc is None:
+        return f"{app} не запущен агентом — сначала вызови open_app"
+    if proc.poll() is not None:
+        ctx.running_apps.pop(key, None)
+        return f"{app} уже закрыт"
+    try:
+        type_into_app(proc.pid, text)
+    except RuntimeError as e:
+        return f"Не удалось напечатать текст: {e}"
+    return f"Текст напечатан в {app}"

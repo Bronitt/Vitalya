@@ -19,8 +19,9 @@ push_to_talk_key_name = "space"
 llm_engine = "ollama"
 llm_model = "qwen3:14b"
 llm_host = "http://localhost:11434"
-temperature = 0.7
-num_predict = 512
+temperature = 1.0
+num_predict = -1
+llm_think = true
 
 [tts]
 tts_engine = "edge_tts"

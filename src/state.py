@@ -1,3 +1,4 @@
+import subprocess
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
@@ -38,6 +39,9 @@ class Context:
     pending_tool: dict | None = None
     error_count: int = 0
     sandbox: Path = field(default_factory=lambda: Path("./sandbox").resolve())
+    # приложения, запущенные агентом через open_app: имя -> Popen
+    # печатать можно только сюда — не в произвольные окна на рабочем столе
+    running_apps: dict[str, subprocess.Popen] = field(default_factory=dict)
 
     # подписчики на смену состояния (аватар, UI, логи)
     listeners: list[Callable[[State, State], None]] = field(default_factory=list)

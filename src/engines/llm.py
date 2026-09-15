@@ -18,9 +18,14 @@ class OllamaLLM:
             model=self.cfg.llm_model,
             messages=history,
             tools=TOOL_SCHEMAS,
-            options={"temperature": self.cfg.temperature, "num_predict": self.cfg.num_predict},
+            think=self.cfg.llm_think,
+            options={
+                "temperature": self.cfg.temperature,
+                "num_predict": self.cfg.num_predict
+            },
         )
         msg = resp["message"]
+        log.debug("LLM raw: %r", msg)
         calls = msg.get("tool_calls") or []
         tool_call = None
         if calls:
