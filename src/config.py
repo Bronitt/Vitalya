@@ -9,6 +9,11 @@ import tomllib
 from logger import log
 
 
+@dataclass
+class CoreConfig:
+    quit_key: str = "esc"
+
+
 class ASREngine(Enum):
     FASTER_WHISPER = "faster_whisper"
 
@@ -19,7 +24,7 @@ class ASRConfig:
     asr_device: str = "cuda"  # cpu/cuda
     asr_compute: str = "float16"  # int8 (cpu) / float16 (cuda)
     asr_language: str = "ru"
-    push_to_talk_button_name: str = "space"
+    push_to_talk_key_name: str = "space"
 
 
 class LLMEngine(Enum):
@@ -43,9 +48,10 @@ class TTSConfig:
 
 @dataclass
 class EngineConfig:
-    asr: ASRConfig = field(default_factory=ASRConfig)
-    llm: LLMConfig = field(default_factory=LLMConfig)
-    tts: TTSConfig = field(default_factory=TTSConfig)
+    core: CoreConfig = field(default_factory=CoreConfig)
+    asr:  ASRConfig  = field(default_factory=ASRConfig)
+    llm:  LLMConfig  = field(default_factory=LLMConfig)
+    tts:  TTSConfig  = field(default_factory=TTSConfig)
 
 
     def save_config(self, path: str | Path = "config.toml") -> None:
@@ -144,11 +150,12 @@ class EngineConfig:
             return config_cls(**parsed_fields)
 
         # Парсим каждую секцию с авто-восстановлением
+        core_config = parse_and_repair_section("core", CoreConfig)
         asr_config = parse_and_repair_section("asr", ASRConfig)
         llm_config = parse_and_repair_section("llm", LLMConfig)
         tts_config = parse_and_repair_section("tts", TTSConfig)
 
-        config = cls(asr=asr_config, llm=llm_config, tts=tts_config)
+        config = cls(core=core_config, asr=asr_config, llm=llm_config, tts=tts_config)
 
         # Если были допечатаны отсутствующие поля — перезаписываем конфиг на диске
         if config_was_updated:

@@ -1,10 +1,13 @@
+[core]
+quit_key = "esc"
+
 [asr]
 asr_engine = "faster_whisper"
 asr_model = "small"
 asr_device = "cuda"
 asr_compute = "float16"
 asr_language = "ru"
-push_to_talk_button_name = "space"
+push_to_talk_key_name = "space"
 
 [llm]
 llm_engine = "ollama"
