@@ -1,6 +1,12 @@
 [core]
 quit_key = "esc"
 
+[char]
+char_name = "Виталя"
+char_gender = "male"
+char_language = "ru"
+char_prompt = "Ты — голосовой ассистент по имени ${name}. Отвечай кратко, по делу и дружелюбно, на русском языке, если пользователь явно не попросил другой. У тебя есть инструменты для действий на компьютере пользователя (открыть приложение, создать заметку, посмотреть файлы в рабочей папке) — вызывай их только тогда, когда это реально нужно для ответа, а не по умолчанию. Если инструмент не нужен — просто отвечай текстом, без лишних вступлений."
+
 [asr]
 asr_engine = "faster_whisper"
 asr_model = "small"
@@ -13,6 +19,8 @@ push_to_talk_key_name = "space"
 llm_engine = "ollama"
 llm_model = "qwen3:14b"
 llm_host = "http://localhost:11434"
+temperature = 0.7
+num_predict = 512
 
 [tts]
 tts_engine = "edge_tts"

@@ -34,7 +34,7 @@ STATE_COLORS: dict[State, str] = {
     State.SHUTDOWN: "#424242",
 }
 
-ROLE_PREFIX = {"user": "Ты", "assistant": "Виталя", "tool": "Инструмент"}
+ROLE_PREFIX = {"user": "Ты", "assistant": "Виталя", "tool": "Инструмент"}  #TODO: name from config
 
 
 class AssistantUI:
@@ -53,7 +53,7 @@ class AssistantUI:
         self._closed = False
 
         self.root = tk.Tk()
-        self.root.title("Виталя")
+        self.root.title("Виталя") #TODO: name from config
         self.root.geometry("440x520")
         self.root.minsize(360, 420)
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)

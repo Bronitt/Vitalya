@@ -117,18 +117,20 @@ class Assistant:
             # Текст пришёл из UI напрямую — записи и ASR не требуется.
             c.transcript = self.text_input
             self.text_input = None
-            c.set_state(State.THINKING)
         else:
             c.set_state(State.LISTENING)
             audio = await self.engines.record(self.interrupt)
-            c.set_state(State.THINKING)
             c.transcript = await self.engines.transcribe(audio)
 
         if not c.transcript.strip():
             log.info("тишина, возвращаемся в ожидание")
             c.set_state(State.IDLE)
             return
+
+        # Сначала пишем в лог, что распознали, и только потом переключаем
+        # состояние — иначе "состояние: -> thinking" печаталось раньше текста.
         log.info("распознано: %s", c.transcript)
+        c.set_state(State.THINKING)
         c.history.append({"role": "user", "content": c.transcript})
         c.emit_message("user", c.transcript)
 
@@ -177,6 +179,13 @@ class Assistant:
         try:
             await self.engines.load()
             c.sandbox.mkdir(parents=True, exist_ok=True)
+
+            # Системный промпт подсаживаем в историю один раз при старте —
+            # дальше он просто едет первым сообщением во всех вызовах LLM.
+            system_prompt = self.engines.cfg.char.char_prompt.replace("${name}", self.engines.cfg.char.char_name).strip()
+            if system_prompt and not c.history:
+                c.history.append({"role": "system", "content": system_prompt})
+
             c.set_state(State.IDLE)
         except Exception:
             log.exception("не удалось загрузиться")

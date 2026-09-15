@@ -14,7 +14,12 @@ class OllamaLLM:
         log.info("LLM: ollama (%s @ %s)", self.cfg.llm_model, self.cfg.llm_host)
 
     async def think(self, history: list[dict]) -> dict:
-        resp = await self._client.chat(model=self.cfg.llm_model, messages=history, tools=TOOL_SCHEMAS)
+        resp = await self._client.chat(
+            model=self.cfg.llm_model,
+            messages=history,
+            tools=TOOL_SCHEMAS,
+            options={"temperature": self.cfg.temperature, "num_predict": self.cfg.num_predict},
+        )
         msg = resp["message"]
         calls = msg.get("tool_calls") or []
         tool_call = None

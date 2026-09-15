@@ -1,7 +1,7 @@
 from dataclasses import dataclass, asdict, fields, field
 from enum import Enum
 from pathlib import Path
-from typing import Type
+from typing import Type, Final
 
 import tomli_w
 import tomllib
@@ -12,6 +12,27 @@ from logger import log
 @dataclass
 class CoreConfig:
     quit_key: str = "esc"
+
+
+DEFAULT_SYSTEM_PROMPT: Final = (
+    "Ты — голосовой ассистент по имени %s. Отвечай кратко, по делу и дружелюбно, "
+    "на русском языке, если пользователь явно не попросил другой. "
+    "У тебя есть инструменты для действий на компьютере пользователя (открыть приложение, "
+    "создать заметку, посмотреть файлы в рабочей папке) — вызывай их только тогда, когда "
+    "это реально нужно для ответа, а не по умолчанию. Если инструмент не нужен — просто "
+    "отвечай текстом, без лишних вступлений."
+)
+
+class CharacterGender(Enum):
+    MALE = "male"
+    FEMALE = "female"
+
+@dataclass
+class CharacterConfig:
+    char_name: str = "Виталя"
+    char_gender: CharacterGender = CharacterGender.MALE
+    char_language: str = "ru"
+    char_prompt: str = DEFAULT_SYSTEM_PROMPT
 
 
 class ASREngine(Enum):
@@ -35,6 +56,8 @@ class LLMConfig:
     llm_engine: LLMEngine = LLMEngine.OLLAMA
     llm_model: str = "qwen3:14b"
     llm_host: str = "http://localhost:11434"
+    temperature: float = 0.7  # 0 — детерминированно и сухо, 1+ — разнообразнее и рискованнее
+    num_predict: int = 512  # верхний лимит токенов на один ответ
 
 
 class TTSEngine(Enum):
@@ -48,10 +71,11 @@ class TTSConfig:
 
 @dataclass
 class EngineConfig:
-    core: CoreConfig = field(default_factory=CoreConfig)
-    asr:  ASRConfig  = field(default_factory=ASRConfig)
-    llm:  LLMConfig  = field(default_factory=LLMConfig)
-    tts:  TTSConfig  = field(default_factory=TTSConfig)
+    core: CoreConfig      = field(default_factory=CoreConfig)
+    char: CharacterConfig = field(default_factory=CharacterConfig)
+    asr:  ASRConfig       = field(default_factory=ASRConfig)
+    llm:  LLMConfig       = field(default_factory=LLMConfig)
+    tts:  TTSConfig       = field(default_factory=TTSConfig)
 
 
     def save_config(self, path: str | Path = "config.toml") -> None:
@@ -151,11 +175,12 @@ class EngineConfig:
 
         # Парсим каждую секцию с авто-восстановлением
         core_config = parse_and_repair_section("core", CoreConfig)
+        char_config = parse_and_repair_section("char", CharacterConfig)
         asr_config = parse_and_repair_section("asr", ASRConfig)
         llm_config = parse_and_repair_section("llm", LLMConfig)
         tts_config = parse_and_repair_section("tts", TTSConfig)
 
-        config = cls(core=core_config, asr=asr_config, llm=llm_config, tts=tts_config)
+        config = cls(core=core_config, char=char_config, asr=asr_config, llm=llm_config, tts=tts_config)
 
         # Если были допечатаны отсутствующие поля — перезаписываем конфиг на диске
         if config_was_updated:
