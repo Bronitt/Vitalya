@@ -101,26 +101,36 @@ class Assistant:
     def __init__(self, engines: Engines, ctx: Context) -> None:
         self.engines = engines
         self.ctx = ctx
-        self.stop_all = asyncio.Event()  # глобальное завершение (Ctrl+C)
-        self.interrupt = asyncio.Event()  # прерывание текущей реплики
+        self.stop_all = asyncio.Event()  # глобальное завершение (закрытие окна / Ctrl+C)
+        self.interrupt = asyncio.Event()  # прерывание текущей реплики / записи
         self.push_to_talk = asyncio.Event()
+        # Если не None — turn() возьмёт этот текст вместо записи+ASR.
+        # Выставляется UI при отправке текста из поля ввода.
+        self.text_input: str | None = None
 
     # --- один ход диалога -------------------------------------------------
 
     async def turn(self) -> None:
         c = self.ctx
 
-        c.set_state(State.LISTENING)
-        audio = await self.engines.record(self.interrupt)
+        if self.text_input is not None:
+            # Текст пришёл из UI напрямую — записи и ASR не требуется.
+            c.transcript = self.text_input
+            self.text_input = None
+            c.set_state(State.THINKING)
+        else:
+            c.set_state(State.LISTENING)
+            audio = await self.engines.record(self.interrupt)
+            c.set_state(State.THINKING)
+            c.transcript = await self.engines.transcribe(audio)
 
-        c.set_state(State.THINKING)
-        c.transcript = await self.engines.transcribe(audio)
         if not c.transcript.strip():
             log.info("тишина, возвращаемся в ожидание")
             c.set_state(State.IDLE)
             return
         log.info("распознано: %s", c.transcript)
         c.history.append({"role": "user", "content": c.transcript})
+        c.emit_message("user", c.transcript)
 
         # Цикл "модель -> инструмент -> модель". Лимит защищает от зацикливания.
         for _ in range(3):
@@ -137,6 +147,7 @@ class Assistant:
             c.reply = "Слишком много шагов, останавливаюсь."
 
         c.history.append({"role": "assistant", "content": c.reply})
+        c.emit_message("assistant", c.reply)
         c.set_state(State.SPEAKING)
         # interrupt мог остаться взведённым с момента отпускания клавиши записи —
         # очищаем перед озвучкой, чтобы TTS получила чистый сигнал прерывания.
@@ -174,7 +185,7 @@ class Assistant:
 
         while not self.stop_all.is_set():
             try:
-                # Ждём либо нажатие клавиши, либо сигнал выхода.
+                # Ждём либо нажатие кнопки/отправку текста, либо сигнал выхода.
                 await self.wait_any(self.push_to_talk, self.stop_all)
                 if self.stop_all.is_set():
                     break

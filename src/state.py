@@ -18,7 +18,7 @@ class State(Enum):
 
 TRANSITIONS: dict[State, set[State]] = {
     State.BOOT:      {State.IDLE, State.ERROR, State.SHUTDOWN},
-    State.IDLE:      {State.LISTENING, State.SHUTDOWN},
+    State.IDLE:      {State.LISTENING, State.THINKING, State.SHUTDOWN},
     State.LISTENING: {State.THINKING, State.IDLE, State.ERROR},
     State.THINKING:  {State.ACTING, State.SPEAKING, State.IDLE, State.ERROR},
     State.ACTING:    {State.THINKING, State.SPEAKING, State.ERROR},
@@ -41,6 +41,8 @@ class Context:
 
     # подписчики на смену состояния (аватар, UI, логи)
     listeners: list[Callable[[State, State], None]] = field(default_factory=list)
+    # подписчики на новые реплики (роль "user"/"assistant" + текст) — для UI-лога
+    message_listeners: list[Callable[[str, str], None]] = field(default_factory=list)
 
     def set_state(self, new: State) -> None:
         if new not in TRANSITIONS[self.state]:
@@ -52,6 +54,13 @@ class Context:
                 fn(old, new)
             except Exception as e:
                 log.warning("слушатель состояния упал: %s", e)
+
+    def emit_message(self, role: str, text: str) -> None:
+        for fn in self.message_listeners:
+            try:
+                fn(role, text)
+            except Exception as e:
+                log.warning("слушатель сообщений упал: %s", e)
 
 
 def on_state_change(old: State, new: State) -> None:
@@ -66,4 +75,3 @@ def on_state_change(old: State, new: State) -> None:
     }.get(new)
     if avatar:
         pass  # TODO: переключить кадр/анимацию Live2D
-
