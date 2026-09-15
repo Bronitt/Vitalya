@@ -2,6 +2,7 @@ import subprocess
 from pathlib import Path
 from typing import Callable
 
+from agent.apps import load_whitelist
 from state import Context
 
 
@@ -64,8 +65,7 @@ def create_note(ctx: Context, filename: str, text: str) -> str:
     {"type": "object", "properties": {"app": {"type": "string"}}, "required": ["app"]},
 )
 def open_app(ctx: Context, app: str) -> str:
-    # Белый список: никакого произвольного shell от LLM.
-    allowed = {"блокнот": "notepad.exe", "калькулятор": "calc.exe"}
+    allowed = load_whitelist()
     exe = allowed.get(app.lower().strip())
     if not exe:
         return f"Приложение {app} не в списке разрешённых"

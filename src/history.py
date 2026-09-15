@@ -10,7 +10,7 @@ from logger import log
 
 # root_project/.history/<chat_name>.json — .history.py лежит в корне проекта,
 # так что родительская папка этого файла и есть root_project.
-HISTORY_DIR: Path = Path(__file__).resolve().parent / ".history"
+HISTORY_DIR: Path = Path(__file__).resolve().parent.parent / ".history"
 
 _BAD_CHARS = re.compile(r'[\\/:*?"<>|]+')
 DEFAULT_TITLE = "Новый чат"

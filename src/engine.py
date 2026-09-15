@@ -10,7 +10,7 @@ from config import EngineConfig
 from engines.llm import LLM_BACKENDS
 from logger import log
 from state import State, Context
-from tools import TOOL_REGISTRY
+from agent.tools import TOOL_REGISTRY
 from engines.transcriber import AudioClip, ASR_BACKENDS, SAMPLE_RATE, BLOCK_MS, CHANNELS, DTYPE, MAX_RECORD_SECONDS
 from engines.tts import TTS_BACKENDS
 
