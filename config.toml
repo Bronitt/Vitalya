@@ -1,6 +1,15 @@
 [core]
 quit_key = "esc"
 
+[docker]
+docker_enabled = true
+docker_image = "python:3.12-slim"
+docker_container_prefix = "agent-sandbox"
+docker_mem_limit = "512m"
+docker_cpus = 1.0
+docker_network = "bridge"
+docker_command_timeout = 30
+
 [char]
 char_name = "Виталя"
 char_gender = "male"

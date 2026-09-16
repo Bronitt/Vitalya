@@ -237,8 +237,9 @@ class Assistant:
         if fn is None:
             return f"Инструмент {name} не найден"
         try:
-            # Инструменты синхронные -> в отдельный поток, чтобы не блокировать цикл.
-            return await asyncio.to_thread(fn, self.ctx, **args)
+            result = await asyncio.to_thread(fn, self.ctx, **args)
+            log.debug("инструмент %s -> %s", name, result[:500])
+            return result
         except PermissionError as e:
             log.warning("блокировка песочницы: %s", e)
             return f"Отказано: {e}"
@@ -307,5 +308,12 @@ class Assistant:
         if c.state is not State.SHUTDOWN:
             c.state = State.SHUTDOWN
             log.info("состояние: -> shutdown")
+        # Docker-песочница (если поднималась run_shell'ом) — часть ресурсов
+        # сессии, как и ASR/LLM/TTS ниже, поэтому гасим её тут же и один раз,
+        # независимо от того, из-за чего пришли к shutdown (закрытие окна,
+        # Ctrl+C, MAX_ERRORS). Если контейнер ни разу не поднимался, stop()
+        # просто ничего не делает.
+        if c.docker_sandbox is not None:
+            await asyncio.to_thread(c.docker_sandbox.stop)
         await self.engines.unload()
         log.info("завершено, реплик в истории: %d", len(c.history))

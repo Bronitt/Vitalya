@@ -4,6 +4,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Callable
 
+from agent.docker_env import DockerSandbox
 from logger import log
 
 
@@ -42,6 +43,11 @@ class Context:
     # приложения, запущенные агентом через open_app: имя -> Popen
     # печатать можно только сюда — не в произвольные окна на рабочем столе
     running_apps: dict[str, subprocess.Popen] = field(default_factory=dict)
+    # Docker-песочница для shell-команд агента (run_shell). None, если не
+    # настроена явно вызывающей стороной (main.py) — тогда инструмент run_shell
+    # сообщит о недоступности вместо падения. Контейнер лениво поднимается
+    # при первом вызове и живёт до Assistant.shutdown().
+    docker_sandbox: DockerSandbox | None = None
 
     # подписчики на смену состояния (аватар, UI, логи)
     listeners: list[Callable[[State, State], None]] = field(default_factory=list)

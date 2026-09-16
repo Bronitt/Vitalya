@@ -4,6 +4,7 @@ import signal
 
 import logger
 from logger import log
+from agent.docker_env import DockerSandbox
 from config import EngineConfig
 from engine import Assistant, Engines
 from state import Context, State, on_state_change
@@ -21,6 +22,11 @@ async def main() -> None:
     ctx.listeners.append(on_state_change)
     config = EngineConfig.load_config()
     app = Assistant(Engines(config), ctx)
+
+    # Docker-песочница создаётся здесь, но контейнер НЕ запускается —
+    # это происходит лениво при первом вызове run_shell (см. agent/docker_env.py).
+    # Останавливается автоматически в Assistant.shutdown() при закрытии программы.
+    ctx.docker_sandbox = DockerSandbox(config.docker, ctx.sandbox)
 
     ui = AssistantUI(app)
     ctx.listeners.append(ui.on_state_change)

@@ -35,6 +35,22 @@ class CharacterConfig:
     char_prompt: str = DEFAULT_SYSTEM_PROMPT
 
 
+@dataclass
+class DockerConfig:
+    """Настройки изолированной песочницы агента (run_shell и т.п.).
+
+    Контейнер поднимается лениво — только когда агенту реально понадобился
+    shell — и живёт до закрытия программы (см. agent/docker_env.py и
+    Assistant.shutdown в engine.py), а не пересоздаётся на каждую команду."""
+    docker_enabled: bool = True
+    docker_image: str = "python:3.12-slim"
+    docker_container_prefix: str = "agent-sandbox"
+    docker_mem_limit: str = "1024m"
+    docker_cpus: float = 1.0
+    docker_network: str = "bridge"  # "none" — полная сетевая изоляция контейнера
+    docker_command_timeout: int = 30  # секунд на одну команду run_shell
+
+
 class ASREngine(Enum):
     FASTER_WHISPER = "faster_whisper"
 
@@ -72,11 +88,12 @@ class TTSConfig:
 
 @dataclass
 class EngineConfig:
-    core: CoreConfig      = field(default_factory=CoreConfig)
-    char: CharacterConfig = field(default_factory=CharacterConfig)
-    asr:  ASRConfig       = field(default_factory=ASRConfig)
-    llm:  LLMConfig       = field(default_factory=LLMConfig)
-    tts:  TTSConfig       = field(default_factory=TTSConfig)
+    core:   CoreConfig      = field(default_factory=CoreConfig)
+    docker: DockerConfig    = field(default_factory=DockerConfig)
+    char:   CharacterConfig = field(default_factory=CharacterConfig)
+    asr:    ASRConfig       = field(default_factory=ASRConfig)
+    llm:    LLMConfig       = field(default_factory=LLMConfig)
+    tts:    TTSConfig       = field(default_factory=TTSConfig)
 
 
     def save_config(self, path: str | Path = "config.toml") -> None:
@@ -180,8 +197,12 @@ class EngineConfig:
         asr_config = parse_and_repair_section("asr", ASRConfig)
         llm_config = parse_and_repair_section("llm", LLMConfig)
         tts_config = parse_and_repair_section("tts", TTSConfig)
+        docker_config = parse_and_repair_section("docker", DockerConfig)
 
-        config = cls(core=core_config, char=char_config, asr=asr_config, llm=llm_config, tts=tts_config)
+        config = cls(
+            core=core_config, char=char_config, docker=docker_config,
+            asr=asr_config, llm=llm_config, tts=tts_config,
+        )
 
         # Если были допечатаны отсутствующие поля — перезаписываем конфиг на диске
         if config_was_updated:

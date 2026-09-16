@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Callable
 
 from agent.apps import load_whitelist
+from agent.docker_env import DockerUnavailable
 from agent.winctl import type_into_app
 from state import Context
 
@@ -98,3 +99,37 @@ def type_text(ctx: Context, app: str, text: str) -> str:
     except RuntimeError as e:
         return f"Не удалось напечатать текст: {e}"
     return f"Текст напечатан в {app}"
+
+
+@tool(
+    "run_shell",
+    "Выполнить shell-команду (bash-скрипт, сборку, установку пакетов и т.п.) в изолированном "
+    "Docker-контейнере — не на компьютере пользователя напрямую. Контейнер поднимается сам при "
+    "первом обращении и работает до конца сессии, так что состояние между командами сохраняется. "
+    "Рабочая директория контейнера (/workspace) — это та же песочница, что видят list_files и "
+    "create_note, так что созданные там файлы видны агенту и наоборот.",
+    {
+        "type": "object",
+        "properties": {
+            "command": {"type": "string", "description": "Команда, будет выполнена как `sh -c \"command\"`"},
+        },
+        "required": ["command"],
+    },
+)
+def run_shell(ctx: Context, command: str) -> str:
+    if ctx.docker_sandbox is None:
+        return "Docker-песочница не настроена в этой сборке"
+    try:
+        result = ctx.docker_sandbox.exec(command)
+    except DockerUnavailable as e:
+        return f"Docker-песочница недоступна: {e}"
+
+    out = result.stdout.strip()
+    err = result.stderr.strip()
+    # Режем вывод — иначе длинный лог/трейс может забить контекст LLM целиком.
+    parts = [f"Код возврата: {result.return_code}"]
+    if out:
+        parts.append(f"Вывод:\n{out[:4000]}")
+    if err:
+        parts.append(f"Ошибки:\n{err[:2000]}")
+    return "\n".join(parts)
