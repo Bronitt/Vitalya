@@ -97,15 +97,23 @@ class OllamaLLM:
 # ---- Gemini API ----
 
 def _schemas_to_gemini(schemas: list[dict]) -> list[dict]:
-    """TOOL_SCHEMAS у нас в OpenAI/Ollama-формате ({"type": "function", "function": {...}}).
-    Gemini ждёт список function_declarations без обёртки "function"."""
+    """TOOL_SCHEMAS у нас в OpenAI/Ollama-формате ({"type": "function", "function": {...}}),
+    с обычным JSON Schema (type: "object"/"string" в нижнем регистре).
+
+    ВАЖНО: используем именно parameters_json_schema, а не parameters —
+    поле parameters ожидает types.Schema с type в ВЕРХНЕМ регистре
+    ("OBJECT"/"STRING"), и наш нижний регистр там просто не матчится
+    (см. https://github.com/googleapis/python-genai/issues/11), из-за чего
+    модель получает нерабочее объявление функции и никогда не вызывает
+    инструменты. parameters_json_schema принимает обычный JSON Schema
+    как есть, без конвертации регистра."""
     declarations = []
     for s in schemas:
         fn = s["function"]
         declarations.append({
             "name": fn["name"],
             "description": fn["description"],
-            "parameters": fn["parameters"],
+            "parameters_json_schema": fn["parameters"],
         })
     return [{"function_declarations": declarations}]
 
