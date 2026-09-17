@@ -9,11 +9,6 @@ import tomllib
 from logger import log
 
 
-@dataclass
-class CoreConfig:
-    quit_key: str = "esc"
-
-
 DEFAULT_SYSTEM_PROMPT: Final = (
     "Ты — голосовой ассистент по имени {name}. Отвечай кратко, по делу и дружелюбно, "
     "на русском языке, если пользователь явно не попросил другой. "
@@ -61,7 +56,6 @@ class ASRConfig:
     asr_device: str = "cuda"  # cpu/cuda
     asr_compute: str = "float16"  # int8 (cpu) / float16 (cuda)
     asr_language: str = "ru"
-    push_to_talk_key_name: str = "space"
 
 
 class LLMEngine(Enum):
@@ -89,7 +83,6 @@ class TTSConfig:
 
 @dataclass
 class EngineConfig:
-    core:   CoreConfig      = field(default_factory=CoreConfig)
     docker: DockerConfig    = field(default_factory=DockerConfig)
     char:   CharacterConfig = field(default_factory=CharacterConfig)
     asr:    ASRConfig       = field(default_factory=ASRConfig)
@@ -193,7 +186,6 @@ class EngineConfig:
             return config_cls(**parsed_fields)
 
         # Парсим каждую секцию с авто-восстановлением
-        core_config = parse_and_repair_section("core", CoreConfig)
         char_config = parse_and_repair_section("char", CharacterConfig)
         asr_config = parse_and_repair_section("asr", ASRConfig)
         llm_config = parse_and_repair_section("llm", LLMConfig)
@@ -201,7 +193,7 @@ class EngineConfig:
         docker_config = parse_and_repair_section("docker", DockerConfig)
 
         config = cls(
-            core=core_config, char=char_config, docker=docker_config,
+            char=char_config, docker=docker_config,
             asr=asr_config, llm=llm_config, tts=tts_config,
         )
 

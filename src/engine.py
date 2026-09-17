@@ -11,7 +11,7 @@ from engines.llm import LLM_BACKENDS
 from logger import log
 from state import State, Context
 from agent.tools import TOOL_REGISTRY
-from engines.transcriber import AudioClip, ASR_BACKENDS, SAMPLE_RATE, BLOCK_MS, CHANNELS, DTYPE, MAX_RECORD_SECONDS
+from engines.transcriber import AudioClip, ASR_BACKENDS, SAMPLE_RATE, BLOCK_MS, CHANNELS, MAX_RECORD_SECONDS
 from engines.tts import TTS_BACKENDS
 
 
@@ -64,7 +64,7 @@ class Engines:
             frames.append(indata.copy())
 
         blocksize = int(SAMPLE_RATE * BLOCK_MS / 1000)
-        with sd.InputStream(samplerate=SAMPLE_RATE, channels=CHANNELS, dtype=DTYPE,
+        with sd.InputStream(samplerate=SAMPLE_RATE, channels=CHANNELS, dtype=self.cfg.asr.asr_compute,
                             blocksize=blocksize, callback=callback):
             try:
                 await asyncio.wait_for(stop.wait(), timeout=MAX_RECORD_SECONDS)
