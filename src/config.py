@@ -66,6 +66,7 @@ class ASRConfig:
 
 class LLMEngine(Enum):
     OLLAMA = "ollama"
+    GEMINI = "gemini"
 
 @dataclass
 class LLMConfig:

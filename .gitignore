@@ -166,3 +166,4 @@ cython_debug/
 apps_whitelist.json
 .history/
 sandbox/
+config.toml
