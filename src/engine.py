@@ -11,7 +11,7 @@ from engines.llm import LLM_BACKENDS
 from logger import log
 from state import State, Context
 from agent.tools import TOOL_REGISTRY
-from engines.transcriber import AudioClip, ASR_BACKENDS, SAMPLE_RATE, BLOCK_MS, CHANNELS, MAX_RECORD_SECONDS
+from engines.transcriber import AudioClip, ASR_BACKENDS, SAMPLE_RATE, BLOCK_MS, CHANNELS, MAX_RECORD_SECONDS, DTYPE
 from engines.tts import TTS_BACKENDS
 
 
@@ -28,6 +28,7 @@ class ASRBackend(Protocol):
 class LLMBackend(Protocol):
     async def load(self) -> None: ...
     async def think(self, history: list[dict]) -> dict: ...
+    async def summarize_title(self, first_message: str) -> str: ...
     async def unload(self) -> None: ...
 
 
@@ -64,7 +65,7 @@ class Engines:
             frames.append(indata.copy())
 
         blocksize = int(SAMPLE_RATE * BLOCK_MS / 1000)
-        with sd.InputStream(samplerate=SAMPLE_RATE, channels=CHANNELS, dtype=self.cfg.asr.asr_compute,
+        with sd.InputStream(samplerate=SAMPLE_RATE, channels=CHANNELS, dtype=DTYPE,
                             blocksize=blocksize, callback=callback):
             try:
                 await asyncio.wait_for(stop.wait(), timeout=MAX_RECORD_SECONDS)
@@ -83,6 +84,10 @@ class Engines:
 
     async def think(self, history: list[dict]) -> dict:
         return await self._llm.think(history)
+
+
+    async def summarize_title(self, first_message: str) -> str:
+        return await self._llm.summarize_title(first_message)
 
 
     async def speak(self, text: str, stop: asyncio.Event) -> None:
@@ -160,15 +165,14 @@ class Assistant:
         c.reply = ""
         c.emit_history_replaced()
 
-    def _save_chat(self) -> None:
-        # Системный промпт не сохраняем — он пересобирается заново из char-конфига
-        # при загрузке, чтобы старые чаты подхватывали актуальный характер/имя.
+    async def _save_chat(self) -> None:
         messages = [m for m in self.ctx.history if m.get("role") != "system"]
         if not messages:
             return
         if self.chat_path is None:
             first_user = next((m.get("content", "") for m in messages if m.get("role") == "user"), "")
-            self.chat_title = chat_history.derive_title(first_user)
+            title = await self.engines.summarize_title(first_user)
+            self.chat_title = title or chat_history.derive_title(first_user)
             self.chat_path = chat_history.unique_path(self.chat_title)
         try:
             chat_history.save_chat(self.chat_path, self.chat_title, messages)
@@ -187,7 +191,6 @@ class Assistant:
         c = self.ctx
 
         if self.text_input is not None:
-            # Текст пришёл из UI напрямую — записи и ASR не требуется.
             c.transcript = self.text_input
             self.text_input = None
         else:
@@ -200,18 +203,19 @@ class Assistant:
             c.set_state(State.IDLE)
             return
 
-        # Сначала пишем в лог, что распознали, и только потом переключаем
-        # состояние — иначе "состояние: -> thinking" печаталось раньше текста.
         log.info("распознано: %s", c.transcript)
         c.set_state(State.THINKING)
+
+        # Явно кладём реплику пользователя в историю ДО обращения к LLM —
+        # иначе think() не видит, что вообще спросил пользователь, а UI и
+        # сохранённый чат остаются "пустыми" с его стороны.
         c.history.append({"role": "user", "content": c.transcript})
         c.emit_message("user", c.transcript)
 
-        # Цикл "модель -> инструмент -> модель". Лимит защищает от зацикливания.
         for _ in range(3):
             out = await self.engines.think(c.history)
             if not out.get("tool_call"):
-                c.reply = out["text"]
+                c.reply = out["text"].strip() or "Не получилось сформулировать ответ, попробуй переформулировать."
                 break
 
             c.set_state(State.ACTING)
@@ -223,10 +227,8 @@ class Assistant:
 
         c.history.append({"role": "assistant", "content": c.reply})
         c.emit_message("assistant", c.reply)
-        self._save_chat()
+        await self._save_chat()
         c.set_state(State.SPEAKING)
-        # interrupt мог остаться взведённым с момента отпускания клавиши записи —
-        # очищаем перед озвучкой, чтобы TTS получила чистый сигнал прерывания.
         self.interrupt.clear()
         await self.engines.speak(c.reply, self.interrupt)
         c.set_state(State.IDLE)

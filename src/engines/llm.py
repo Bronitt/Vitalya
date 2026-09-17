@@ -39,6 +39,13 @@ load_dotenv(ENV_PATH)
 load_dotenv()
 
 
+TITLE_PROMPT: Final[str] = (
+    "Придумай короткий заголовок чата (до 5 слов, без кавычек и точки в конце) "
+    "по первому сообщению пользователя. Ответь ТОЛЬКО заголовком, без пояснений.\n\n"
+    "Сообщение пользователя: {message}"
+)
+
+
 class OllamaLLM:
     def __init__(self, cfg: LLMConfig) -> None:
         self.cfg = cfg
@@ -68,6 +75,20 @@ class OllamaLLM:
             c = calls[0]["function"]
             tool_call = {"name": c["name"], "arguments": c.get("arguments", {})}
         return {"text": msg.get("content", ""), "tool_call": tool_call}
+
+    async def summarize_title(self, first_message: str) -> str:
+        try:
+            resp = await self._client.chat(
+                model=self.cfg.llm_model,
+                messages=[{"role": "user", "content": TITLE_PROMPT.format(message=first_message[:500])}],
+                think=False,  # заголовку рассуждения не нужны, только результат
+                options={"temperature": 0.3, "num_predict": 30},
+            )
+            title = resp["message"].get("content", "").strip().strip('"').strip("«»")
+            return title[:60] if title else ""
+        except Exception:
+            log.warning("не удалось сгенерировать заголовок чата через LLM")
+            return ""
 
     async def unload(self) -> None:
         self._client = None
@@ -129,7 +150,7 @@ class GeminiLLM:
         получился 404 "is not supported for generateContent" при прежней
         проверке на простое наличие имени."""
         import asyncio
-    
+
         def list_supporting_generate() -> set[str]:
             names = set()
             for m in self._client.models.list():
@@ -219,6 +240,32 @@ class GeminiLLM:
                     text += part.text
 
         return {"text": text, "tool_call": tool_call}
+
+    async def summarize_title(self, first_message: str) -> str:
+        import asyncio
+        from google.genai import types, errors
+
+        def call():
+            return self._client.models.generate_content(
+                model=self.cfg.llm_model,
+                contents=[{"role": "user", "parts": [{"text": TITLE_PROMPT.format(message=first_message[:500])}]}],
+                config=types.GenerateContentConfig(temperature=0.3, max_output_tokens=30),
+            )
+
+        try:
+            resp = await asyncio.to_thread(call)
+        except (errors.ServerError, errors.ClientError):
+            log.warning("не удалось сгенерировать заголовок чата через Gemini")
+            return ""
+
+        text = ""
+        candidate = resp.candidates[0] if resp.candidates else None
+        if candidate:
+            for part in candidate.content.parts:
+                if getattr(part, "text", None):
+                    text += part.text
+        title = text.strip().strip('"').strip("«»")
+        return title[:60] if title else ""
 
     async def unload(self) -> None:
         self._client = None

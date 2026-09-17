@@ -25,7 +25,8 @@ def _slugify(title: str, maxlen: int = 60) -> str:
 
 
 def derive_title(first_message: str, maxlen: int = 40) -> str:
-    # Автоназвание чата по первому сообщению — как делают современные чат-интерфейсы.
+    # Fallback, если LLM недоступна/вернула пустоту — старое поведение,
+    # автоназвание по первым символам сообщения.
     line = (first_message or "").strip().splitlines()[0].strip() if first_message.strip() else ""
     if len(line) > maxlen:
         line = line[:maxlen].rstrip() + "…"

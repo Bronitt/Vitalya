@@ -14,6 +14,7 @@ MODEL_CACHE_DIR: Final = Path(__file__).resolve().parent.parent.parent / ".cache
 # аудио
 SAMPLE_RATE: Final = 16000          # частота, которую ждёт whisper
 CHANNELS: Final = 1
+DTYPE: Final = "int16"
 BLOCK_MS: Final = 30                # размер блока записи, мс
 MAX_RECORD_SECONDS: Final = 90      # страховка, если "отпускание" потерялось
 
