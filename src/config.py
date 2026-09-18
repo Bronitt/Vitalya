@@ -7,6 +7,7 @@ import tomli_w
 import tomllib
 
 from logger import log
+from main import PROJECT_ROOT_PATH
 
 
 DEFAULT_SYSTEM_PROMPT: Final = (
@@ -17,6 +18,7 @@ DEFAULT_SYSTEM_PROMPT: Final = (
     "это реально нужно для ответа, а не по умолчанию. Если инструмент не нужен — просто "
     "отвечай текстом, без лишних вступлений."
 )
+
 
 class CharacterGender(Enum):
     MALE = "male"
@@ -92,7 +94,7 @@ class EngineConfig:
 
     def save_config(self, path: str | Path = "config.toml") -> None:
         # Сохраняем текущий конфиг в файл
-        path = Path(path)
+        path = PROJECT_ROOT_PATH / path
         # Получаем исходный словарь из dataclass
         raw_data = asdict(self)
 

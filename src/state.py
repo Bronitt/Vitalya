@@ -6,6 +6,7 @@ from typing import Callable
 
 from agent.docker_env import DockerSandbox
 from logger import log
+from main import PROJECT_ROOT_PATH
 
 
 class State(Enum):
@@ -39,7 +40,7 @@ class Context:
     reply: str = ""
     pending_tool: dict | None = None
     error_count: int = 0
-    sandbox: Path = field(default_factory=lambda: Path("./sandbox").resolve())
+    sandbox: Path = field(default_factory=lambda: PROJECT_ROOT_PATH /"./sandbox")
     # приложения, запущенные агентом через open_app: имя -> Popen
     # печатать можно только сюда — не в произвольные окна на рабочем столе
     running_apps: dict[str, subprocess.Popen] = field(default_factory=dict)

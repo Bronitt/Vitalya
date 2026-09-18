@@ -1,14 +1,19 @@
 import argparse
 import asyncio
 import signal
+from pathlib import Path
+from typing import Final
 
 import logger
 from logger import log
 from agent.docker_env import DockerSandbox
 from config import EngineConfig
 from engine import Assistant, Engines
-from state import Context, State, on_state_change
+from state import Context, on_state_change
 from ui import AssistantUI
+
+
+PROJECT_ROOT_PATH: Final[Path] = Path(__file__).resolve().parent.parent
 
 
 def parse_args():

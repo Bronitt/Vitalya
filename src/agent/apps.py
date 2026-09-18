@@ -6,6 +6,8 @@ import sys
 from pathlib import Path
 
 from logger import log
+from main import PROJECT_ROOT_PATH
+
 
 # --- 1. системные утилиты: одинаковы на любой машине, хардкод ок ---------
 SYSTEM_APPS: dict[str, str] = {
@@ -20,7 +22,7 @@ THIRD_PARTY_APPS: dict[str, str] = {
 }
 
 # ручной оверрайд на случай portable-версий / нестандартной установки
-OVERRIDE_PATH: Path = Path(__file__).resolve().parent / "apps_whitelist.json"
+OVERRIDE_PATH: Path = PROJECT_ROOT_PATH / "apps_whitelist.json"
 
 
 def _from_windows_app_paths(exe_name: str) -> str | None:

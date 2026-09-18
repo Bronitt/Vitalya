@@ -7,10 +7,11 @@ from dotenv import load_dotenv
 from config import LLMConfig, LLMEngine
 from logger import log
 from agent.tools import TOOL_SCHEMAS
+from main import PROJECT_ROOT_PATH
 
 
 GEMINI_KEY_URL: Final[str] = "https://aistudio.google.com/apikey"
-ENV_PATH: Path = Path(__file__).resolve().parent.parent.parent / ".env"
+ENV_PATH: Path = PROJECT_ROOT_PATH / ".env"
 
 
 # Костыль, который позже следует вынести в отдельный модуль для работы с .env,

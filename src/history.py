@@ -7,10 +7,11 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from logger import log
+from main import PROJECT_ROOT_PATH
 
 # root_project/.history/<chat_name>.json — .history.py лежит в корне проекта,
 # так что родительская папка этого файла и есть root_project.
-HISTORY_DIR: Path = Path(__file__).resolve().parent.parent / ".history"
+HISTORY_DIR: Path = PROJECT_ROOT_PATH / ".history"
 
 _BAD_CHARS = re.compile(r'[\\/:*?"<>|]+')
 DEFAULT_TITLE = "Новый чат"

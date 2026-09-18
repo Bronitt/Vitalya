@@ -7,9 +7,9 @@ import numpy as np
 
 from config import ASRConfig, ASREngine
 from logger import log
+from main import PROJECT_ROOT_PATH
 
-
-MODEL_CACHE_DIR: Final = Path(__file__).resolve().parent.parent.parent / ".cache" / "asr"
+MODEL_CACHE_DIR: Final[Path] = PROJECT_ROOT_PATH / ".cache" / "asr"
 
 # аудио
 SAMPLE_RATE: Final = 16000          # частота, которую ждёт whisper
